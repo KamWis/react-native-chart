@@ -1,203 +1,149 @@
 /* @flow */
 import React, { Component } from 'react';
-import { Animated, ART, View, Platform, TouchableOpacity } from 'react-native';
+import { Animated, ART, View, Platform, Text } from 'react-native';
 const { Surface, Shape, Path } = ART;
 import * as C from './constants';
 import Circle from './Circle';
 const AnimatedShape = Animated.createAnimatedComponent(Shape);
 import Grid from './Grid';
 
-const makeDataPoint = (x : number, y : number, data : any, index : number) => {
-
-	let color = (data.color[index]) ? data.color[index] : C.BLUE;
-
-	let fill = ((data.dataPointFillColor) && (data.dataPointFillColor[index])) ?
-		(data.dataPointFillColor[index]) :  color;
-
-	let stroke = ((data.dataPointColor) && (data.dataPointColor[index])) ?
-			(data.dataPointColor[index]) :  color;
-
-	return {
-		x,
-		y,
-		radius: data.dataPointRadius,
-		fill: fill,
-		stroke: stroke  };
+const makeDataPoint = (x : number, y : number, data : any) => {
+  return { x, y, radius: data.dataPointRadius, fill: data.dataPointFillColor, stroke: data.dataPointColor };
 };
 
 const calculateDivisor = (minBound : number, maxBound : number) : number => {
-	return (maxBound - minBound <= 0) ? 0.00001 : maxBound - minBound;
+  return (maxBound - minBound <= 0) ? 0.00001 : maxBound - minBound;
 };
 
 const heightZero = (Platform.OS === 'ios') ? 0 : 1;
 
 export default class LineChart extends Component<void, any, any> {
 
-	constructor(props : any) {
-		super(props);
-		const heightValue = (props.animated) ? heightZero : props.height;
-		const opacityValue = (props.animated) ? 0 : 1;
-		this.state = { height: new Animated.Value(heightValue), opacity: new Animated.Value(opacityValue) };
-	}
+  constructor(props : any) {
+    super(props);
 
-	componentWillUpdate() {
-		if (this.props.animated) {
-			Animated.timing(this.state.opacity, { duration: 0, toValue: 0 }).start();
-			Animated.timing(this.state.height, { duration: 0, toValue: heightZero }).start();
-		}
-	}
+    const heightValue = (props.animated) ? heightZero : props.height;
+    const opacityValue = (props.animated) ? 0 : 1;
+    this.state = { height: new Animated.Value(heightValue), opacity: new Animated.Value(opacityValue), pointZero: 0 };
+  }
 
-	componentDidUpdate() {
-		if (this.props.animated) {
-			Animated.timing(this.state.height, { duration: this.props.animationDuration, toValue: this.props.height }).start();
-			Animated.timing(this.state.opacity, { duration: this.props.animationDuration, toValue: 1 }).start();
-		}
-	}
+  componentWillUpdate() {
+    if (this.props.animated) {
+      Animated.timing(this.state.opacity, { duration: 0, toValue: 0 }).start();
+      Animated.timing(this.state.height, { duration: 0, toValue: heightZero }).start();
+    }
+  }
 
-	_drawLine = () => {
-		const containerHeight = this.props.height;
-		const containerWidth = this.props.width;
-		const data = this.props.data || [[]];
-		let minBound = this.props.minVerticalBound;
-		let maxBound = this.props.maxVerticalBound;
+  componentDidUpdate() {
+    if (this.props.animated) {
+      Animated.timing(this.state.height, { duration: this.props.animationDuration, toValue: this.props.height }).start();
+      Animated.timing(this.state.opacity, { duration: this.props.animationDuration, toValue: 1 }).start();
+    }
+  }
 
-		// For all same values, create a range anyway
-		if (minBound === maxBound) {
-			minBound -= this.props.verticalGridStep;
-			maxBound += this.props.verticalGridStep;
-		}
+  componentWillReceiveProps(nextProps) {
 
-		const divisor = calculateDivisor(minBound, maxBound);
-		const scale = (containerHeight + 1) / divisor;
-		const horizontalStep = containerWidth / data[0].length;
+    let minBound = this.props.minVerticalBound;
+    let maxBound = this.props.maxVerticalBound;
+    const containerHeight = this.props.height;
+    // For all same values, create a range anyway
+    if (minBound === maxBound) {
+      minBound -= this.props.verticalGridStep;
+      maxBound += this.props.verticalGridStep;
+    }
+    const divisor = calculateDivisor(minBound, maxBound);
+    const scale = (containerHeight + 1) / divisor;
+    const pointZeroValue = (minBound * scale) + containerHeight;
 
-		const dataPoints = [];
-		const path = [];
-		const fillPath = [];
+    this.props.pointZero(Math.round(pointZeroValue));
 
-		for (index = 0; index < data.length; index++) {
-			var pathArray = [], fillPathArray = [], pathSubIndex = -1;
-			let currentData = data[index] || [];
-			const firstDataPoint = currentData[0][1];
-			let height = (minBound * scale) + (containerHeight - (firstDataPoint * scale));
-			if (height < 0) height = 0;
+    this.setState({
+      scale,
+      minBound,
+      maxBound
+    });
+  }
 
-			const dataPointSet = [];
-			dataPointSet.push(makeDataPoint(0, height, this.props, index));
+  _drawLine = () => {
 
-			let beginNewPath = true;
-			currentData.forEach(([_, dataPoint], i) => {
+    const { scale, minBound, maxBound } = this.state;
+    const { daysInMonth } = this.props;
 
-				if (dataPoint === '') {
-					// An empty within the graph, begin new Path next non-empty datapoint
-					// beginNewPath = true;
-					return;
-				}
+    const containerHeight = this.props.height;
+    const containerWidth = this.props.width;
+    const data = this.props.data || [];
 
-				let _height = (minBound * scale) + (containerHeight - (dataPoint * scale));
-				if (_height < 0) _height = 0;
+    const stepCount = daysInMonth ? daysInMonth : data.length;
 
-				const x = horizontalStep * (i);
-				const y = Math.round(_height);
+    const horizontalStep = containerWidth / stepCount;
+    const dataPoints = [];
+    const firstDataPoint = data[0][1];
+    let height = (minBound * scale) + (containerHeight - (firstDataPoint * scale));
+    if (height < 0) height = 0;
 
-				dataPointSet.push(makeDataPoint(x, y, this.props, index));
+    const path = new Path().moveTo(0, height);
+    const fillPath = new Path().moveTo(0, containerHeight).lineTo(0, height);
 
-				if ((beginNewPath) && (dataPoint !== '')) {
-					pathArray.push(new Path().moveTo(x, y));
-					fillPathArray.push(new Path().moveTo(x, containerHeight).lineTo(x, height));
-					pathSubIndex++;
-					beginNewPath = false;
-				} else {
-					pathArray[pathSubIndex].lineTo(x, y);
-					fillPathArray[pathSubIndex].lineTo(x, y);
-				}
-			});
+    dataPoints.push(makeDataPoint(0, height, this.props));
 
-			dataPoints.push(dataPointSet);
+    data.slice(1).forEach(([_, dataPoint], i) => {
+      let _height = (minBound * scale) + (containerHeight - (dataPoint * scale));
 
-			for (g = 0; g < pathArray.length; g++) {
-				fillPathArray[g].lineTo(dataPointSet[dataPointSet.length - 1].x, containerHeight);
-				if (this.props.fillColor) {
-					fillPathArray[g].moveTo(0, containerHeight);
-				}
+      if (_height < 0) _height = 0;
 
-				if (pathArray[g].path.some(isNaN)) return null;
-			}
+      const x = horizontalStep * (i) + horizontalStep;
+      const y = Math.round(_height);
 
-			path.push(pathArray);
-			fillPath.push(fillPathArray);
-		}
+      path.lineTo(x, y);
+      fillPath.lineTo(x, y);
+      dataPoints.push(makeDataPoint(x, y, this.props));
+    });
+    fillPath.lineTo(dataPoints[dataPoints.length - 1].x, containerHeight);
+    if (this.props.fillColor) {
+      fillPath.moveTo(0, containerHeight);
+    }
+    if (path.path.some(isNaN)) return null;
+    return (
+      <View style={{marginTop: 11}}>
+        <View style={{ position: 'absolute' }}>
+          <Surface width={containerWidth} height={containerHeight}>
+            <AnimatedShape d={path} stroke={this.props.color || C.BLUE} strokeWidth={this.props.lineWidth} />
+            <AnimatedShape d={fillPath} fill={this.props.fillColor} />
+          </Surface>
+        </View>
+        <View style={{ position: 'absolute' }}>
+          <Surface width={containerWidth} height={containerHeight} />
+        </View>
+        {(() => {
+          if (!this.props.showDataPoint) return null;
+          return (
+            <Surface width={containerWidth} height={containerHeight}>
+              {dataPoints.map((d, i) => <Circle key={i} {...d} />)}
+            </Surface>
+          );
+        })()}
+      </View>
+    );
+  };
 
-		var multipleLines = dataPoints.map( (dataPointSet, index) => {
-			let color = (this.props.color[index]) ? this.props.color[index] : C.BLUE;
-			let allDisjointPaths = path[index].map( (singlePath) => {
-				return (
-					<AnimatedShape d={singlePath} stroke={this.props.color[index] || C.BLUE} strokeWidth={this.props.lineWidth} />
-				);
-			});
-			return allDisjointPaths;
-		});
-
-		var multipleFills = dataPoints.map( (dataPointSet, index) => {
-			let allDisjointPaths = fillPath[index].map ( (singlePath, subIndex) => {
-				return (
-					<AnimatedShape d={singlePath} fill={this.props.fillColor} />
-				);
-			});
-			return allDisjointPaths;
-		});
-
-		return (
-			<View>
-				<View style={{ position: 'absolute' }}>
-					<Surface width={containerWidth} height={containerHeight}>
-						{ multipleLines }
-						{ multipleFills }
-					</Surface>
-				</View>
-				<View style={{ position: 'absolute' }}>
-					<Surface width={containerWidth} height={containerHeight} />
-				</View>
-				{(() => {
-					if (!this.props.showDataPoint) return null;
-
-					var multipleDataPoints = dataPoints.map( (dataPointSet, index) => {
-						let totalDataSet = dataPointSet.map((d, i) => {
-							return (
-								<Circle key={i} {...d} onPress={()=>alert(i)} />
-							);
-						});
- 						return totalDataSet;
-					});
-
-					return (
-						<Surface width={containerWidth} height={containerHeight}>
-							{ multipleDataPoints }
-						</Surface>
-					);
-				})()}
-			</View>
-		);
-	};
-
-	render() : any {
-		if (Platform.OS === 'ios') {
-			return (
-				<View style={{ overflow: 'hidden' }}>
-					<Grid {...this.props} />
-					<Animated.View style={{ height: this.state.height, opacity: this.state.opacity, backgroundColor: 'transparent' }}>
-						{this._drawLine()}
-					</Animated.View>
-				</View>
-			);
-		}
-		return (
-			<View>
-				<Grid {...this.props} />
-				<View style={{ height: this.props.height }}>
-					{this._drawLine()}
-				</View>
-			</View>
-		);
-	}
+  render() : any {
+    if (Platform.OS === 'ios') {
+      return (
+        <View style={{ overflow: 'hidden' }}>
+          <Grid {...this.props} />
+          <Animated.View style={{ height: this.state.height, opacity: this.state.opacity, backgroundColor: 'transparent' }}>
+            {this._drawLine()}
+          </Animated.View>
+        </View>
+      );
+    }
+    return (
+      <View>
+        <Grid {...this.props} />
+        <View style={{ height: this.props.height }}>
+          {this._drawLine()}
+        </View>
+      </View>
+    );
+  }
 }
