@@ -5,7 +5,7 @@ import { uniqueValuesInDataSet } from './util';
 export default class Grid extends Component {
 	static propTypes = {
 		showGrid: PropTypes.bool,
-		data: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.array)).isRequired,
+		data: PropTypes.arrayOf(PropTypes.array).isRequired,
 		verticalGridStep: PropTypes.number.isRequired,
 		horizontalGridStep: PropTypes.number,
 		gridLineWidth: PropTypes.number,
