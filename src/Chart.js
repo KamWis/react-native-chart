@@ -132,10 +132,12 @@ export default class Chart extends Component<void, any, any> {
     return this.setState({ bounds: { max, min } });
   }
 
-  _onContainerLayout = (e : Object) => this.setState({
-    containerHeight: Math.ceil(e.nativeEvent.layout.height) - 37,
-    containerWidth: Math.ceil(e.nativeEvent.layout.width),
-  });
+  _onContainerLayout(e : Object) {
+    this.setState({
+      containerHeight: Math.ceil(e.nativeEvent.layout.height) - 37,
+      containerWidth: Math.ceil(e.nativeEvent.layout.width),
+    });
+  }
 
   _minVerticalBound() : number {
     if (this.props.tightBounds) return this.state.bounds.min;
@@ -147,10 +149,8 @@ export default class Chart extends Component<void, any, any> {
     return (this.state.bounds.max > 0) ? this.state.bounds.max : 0;
   }
 
-  _getPointZero = (point) => {
-
-    if(point && this.state.pointZero === undefined && this.state.bounds.min < 0) {
-
+  _getPointZero(point) {
+    if(point && this.state.pointZero !== point && this.state.bounds.min < 0) {
       this.setState({
         pointZero: point
       });
@@ -161,6 +161,7 @@ export default class Chart extends Component<void, any, any> {
   render() {
     const components = { 'line': LineChart, 'bar': BarChart, 'pie': PieChart };
     const axisAlign = (this.props.type === 'line') ? 'left' : 'center';
+    const { pointZero } = this.state;
     return (
       <View>
         {(() => {
@@ -169,10 +170,10 @@ export default class Chart extends Component<void, any, any> {
             return (
               <View
                 ref="container"
-                style={[this.props.style || {}, { flex: 1, flexDirection: 'column' }]}
-                onLayout={this._onContainerLayout}
+                style={[this.props.style || {}, {flexDirection: 'column'}]}
+                onLayout={(e) => this._onContainerLayout(e)}
               >
-                <View style={[styles.default, { flexDirection: 'row', paddingLeft: this.props.innerPadding }]}>
+                <View style={[{flex: 1, flexDirection: 'row', paddingLeft: this.props.innerPadding }]}>
                   <View ref="yAxis">
                   { this.props.showYAxis ?
                     <YAxis
@@ -192,10 +193,26 @@ export default class Chart extends Component<void, any, any> {
                   >
                     <Text style={{fontSize: 10, textAlign: 'right'}}>{this.state.bounds.max} USD</Text>
                   </View>
-                  { this.state.bounds.min < 0 ?
-                    <View style={{position: 'absolute', left: 0, right: 0, top: this.state.pointZero - 6, borderBottomColor: 'rgba(33, 150, 243, 0.32)', borderBottomWidth: 1, paddingRight: 7, paddingBottom: 2}}><Text style={{fontSize: 10, textAlign: 'right'}}>0</Text></View>
-                    : null
-                  }
+                  {(() => {
+                    if(this.state.bounds.min < 0) {
+                      return (
+                        <View style={{
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          top: pointZero - 6,
+                          borderBottomColor: 'rgba(33, 150, 243, 0.32)',
+                          borderBottomWidth: 1,
+                          paddingRight: 7,
+                          paddingBottom: 2
+                        }}>
+                          <Text style={{fontSize: 10, textAlign: 'right'}}>0</Text>
+                        </View>
+                      );
+                    } else {
+                      return null;
+                    }
+                  })()}
                   <ChartType
                     {...this.props}
                     data={this.props.data}
@@ -203,11 +220,11 @@ export default class Chart extends Component<void, any, any> {
                     height={this.state.containerHeight - this.props.xAxisHeight}
                     minVerticalBound={this.state.bounds.min}
                     maxVerticalBound={this.state.bounds.max}
-                    pointZero={this._getPointZero}
+                    pointZero={(point) => this._getPointZero(point)}
                     daysInMonth={moment().daysInMonth()}
                   />
                   <View
-                    style={{borderTopWidth: 1, borderTopColor: 'rgba(33, 150, 243, 0.12)', position: 'absolute', bottom: 9, right: 0, left: 0, paddingRight: 7, paddingTop: 2}}
+                    style={{borderTopWidth: 1, borderTopColor: 'rgba(33, 150, 243, 0.12)', position: 'absolute', bottom: 7, right: 0, left: 0, paddingRight: 7, paddingTop: 2}}
                   >
                     <Text style={{fontSize: 10, textAlign: 'right'}}>{this.state.bounds.min} USD</Text>
                   </View>
@@ -236,7 +253,7 @@ export default class Chart extends Component<void, any, any> {
           return (
             <View
               ref="container"
-              onLayout={this._onContainerLayout}
+              onLayout={(e) => this._onContainerLayout(e)}
               style={[this.props.style || {}, styles.default]}
             >
               <ChartType
