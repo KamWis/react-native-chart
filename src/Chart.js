@@ -164,6 +164,7 @@ export default class Chart extends Component<void, any, any> {
     const components = { 'line': LineChart, 'bar': BarChart, 'pie': PieChart };
     const axisAlign = (this.props.type === 'line') ? 'left' : 'center';
     const { pointZero, bounds: {min, max} } = this.state;
+    
     return (
       <View>
         {(() => {
