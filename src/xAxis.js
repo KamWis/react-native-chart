@@ -37,6 +37,7 @@ export default class XAxis extends Component {
 
   render() {
     const data = this.props.data || [];
+    const { daysInMonth } = this.props;
     let transform = (d) => d;
     if (this.props.xAxisTransform && typeof this.props.xAxisTransform === 'function') {
       transform = this.props.xAxisTransform;
@@ -61,7 +62,8 @@ export default class XAxis extends Component {
 
           if (typeof item !== 'number' && !item) return null;
 
-          if((i + 1) % 3 !== 1) return null;
+          if((daysInMonth === 31 || daysInMonth === 29) && (i + 1) % 2 === 0) return null;
+          if((daysInMonth === 30 || daysInMonth === 28) && (i + 1) % 2 !== 0) return null;
 
           return (
             <Text
@@ -79,13 +81,15 @@ export default class XAxis extends Component {
         });
       })()}
       {(() => {
-        const { daysInMonth } = this.props;
         if(data.length < daysInMonth) {
 
           const daysDifference = daysInMonth - data.length;
           const fillUpArray = _.fill(Array(daysDifference), 0);
           return fillUpArray.map((item, i) => {
-            if((i + 1) % 3 !== 1) return null;
+
+            if((daysInMonth === 31 || daysInMonth === 29) && (i + 1) % 2 === 0) return null;
+            if((daysInMonth === 30 || daysInMonth === 28) && (i + 1) % 2 !== 0) return null;
+
             return <Text key={i} style={styles.axisText}></Text>;
           });
         }
