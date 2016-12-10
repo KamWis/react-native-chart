@@ -55,6 +55,8 @@ export default class Chart extends Component<void, any, any> {
     verticalGridStep: 4,
     xAxisHeight: 20,
     yAxisWidth: 30,
+    daysInMonth: 0,
+    currency: 'USD'
   };
 
   constructor(props : any) {
@@ -161,7 +163,8 @@ export default class Chart extends Component<void, any, any> {
   render() {
     const components = { 'line': LineChart, 'bar': BarChart, 'pie': PieChart };
     const axisAlign = (this.props.type === 'line') ? 'left' : 'center';
-    const { pointZero } = this.state;
+    const { pointZero, bounds: {min, max} } = this.state;
+    
     return (
       <View>
         {(() => {
@@ -181,20 +184,23 @@ export default class Chart extends Component<void, any, any> {
                       data={this.props.data}
                       height={this.state.containerHeight - this.props.xAxisHeight}
                       width={this.props.yAxisWidth}
-                      minVerticalBound={this.state.bounds.min}
+                      minVerticalBound={min}
                       containerWidth={this.state.containerWidth}
-                      maxVerticalBound={this.state.bounds.max}
+                      maxVerticalBound={max}
                       style={{ width: this.props.yAxisWidth }}
                     />
                      : <View></View>}
                   </View>
                   <View
-                    style={{borderBottomWidth: 1, borderBottomColor: 'rgba(33, 150, 243, 0.12)', position: 'absolute', top: -5, right: 0, left: 0, paddingRight: 7, paddingTop: 2}}
+                    style={{borderBottomWidth: 1, borderBottomColor: 'rgba(33, 150, 243, 0.12)', position: 'absolute', top: min !== max ? -5 : 5, right: 0, left: 0, paddingRight: 7, paddingTop: 2}}
                   >
-                    <Text style={{fontSize: 10, textAlign: 'right'}}>{this.state.bounds.max} USD</Text>
+                    {min !== max ?
+                      <Text style={{fontSize: 10, textAlign: 'right'}}>{`${max} ${this.props.currency}`}</Text>
+                      : null
+                    }
                   </View>
                   {(() => {
-                    if(this.state.bounds.min < 0) {
+                    if(min < 0) {
                       return (
                         <View style={{
                           position: 'absolute',
@@ -218,15 +224,18 @@ export default class Chart extends Component<void, any, any> {
                     data={this.props.data}
                     width={this.state.containerWidth - this.props.yAxisWidth}
                     height={this.state.containerHeight - this.props.xAxisHeight}
-                    minVerticalBound={this.state.bounds.min}
-                    maxVerticalBound={this.state.bounds.max}
+                    minVerticalBound={min}
+                    maxVerticalBound={max}
                     pointZero={(point) => this._getPointZero(point)}
-                    daysInMonth={moment().daysInMonth()}
+                    daysInMonth={this.props.daysInMonth}
                   />
                   <View
                     style={{borderTopWidth: 1, borderTopColor: 'rgba(33, 150, 243, 0.12)', position: 'absolute', bottom: 7, right: 0, left: 0, paddingRight: 7, paddingTop: 2}}
                   >
-                    <Text style={{fontSize: 10, textAlign: 'right'}}>{this.state.bounds.min} USD</Text>
+                    {min !== max ?
+                      <Text style={{fontSize: 10, textAlign: 'right'}}>{`${min} ${this.props.currency}`}</Text>
+                      : null
+                    }
                   </View>
                 </View>
                 {(() => {
@@ -242,7 +251,7 @@ export default class Chart extends Component<void, any, any> {
                         axisColor='rgba(33, 150, 243, 0)'
                         innerPadding={this.props.innerPadding}
                         style={{ marginLeft: this.props.showYAxis ? this.props.yAxisWidth - 1 : 0, paddingTop: 3, paddingBottom: 3 }}
-                        daysInMonth={moment().daysInMonth()}
+                        daysInMonth={this.props.daysInMonth}
                       />
                     </View>
                   );
@@ -279,10 +288,12 @@ Chart.propTypes = {
   highlightColor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]), // TODO
   highlightIndices: PropTypes.arrayOf(PropTypes.number), // TODO
   onDataPointPress: PropTypes.func,
+  currency: PropTypes.string,
 
   // Bar chart props
   color: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   cornerRadius: PropTypes.number,
+  daysInMonth: PropTypes.number,
   // fillGradient: PropTypes.arrayOf(PropTypes.oneOfType([PropTypes.number, PropTypes.string])), // TODO
   widthPercent: PropTypes.number,
 
